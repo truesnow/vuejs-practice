@@ -6,6 +6,7 @@
           <h1 class="text-center">{{ title }}</h1>
           <div class="article-meta text-center">
             <i class="fa fa-clock-o"></i>
+            <abbr>{{ date | moment('from') }}</abbr>
           </div>
           <div class="entry-content">
             <div class="content-body entry-content panel-body ">
@@ -21,29 +22,58 @@
 <script>
 import SimpleMDE from 'simplemde'
 import hljs from 'highlight.js'
+import emoji from 'node-emoji'
+import { mapState } from 'vuex'
 
 export default {
   name: 'Content',
   data() {
     return {
       title: '', // 文章标题
-      content: '' // 文章内容
+      content: '', // 文章内容
+      date: '', // 文章创建时间
+      uid: 1 // 用户 ID
     }
+  },
+  computed: {
+    ...mapState([
+      'auth',
+      'user'
+    ])
   },
   created() {
     const articleId = this.$route.params.articleId
     const article = this.$store.getters.getArticleById(articleId)
 
     if (article) {
-      let { title, content } = article
+      let { uid, title, content, date } = article
 
+      this.uid = uid
       this.title = title
-      this.content = SimpleMDE.prototype.markdown(content)
+      this.content = SimpleMDE.prototype.markdown(emoji.emojify(content, name => name))
+      this.date = date
 
       this.$nextTick(() => {
         this.$el.querySelectorAll('pre code').forEach((el) => {
           hljs.highlightBlock(el)
         })
+      })
+    }
+
+    this.articleId = articleId
+  },
+  methods: {
+    editArticle() {
+      this.$router.push({ name: 'Edit', params: { articleId: this.articleId } })
+    },
+    deleteArticle() {
+      this.$swal({
+        text: '你确定要删除此内容吗?',
+        confirmButtonText: '删除'
+      }).then((res) => {
+        if (res.value) {
+          this.$store.dispatch('post', { articleId: this.articleId })
+        }
       })
     }
   }
